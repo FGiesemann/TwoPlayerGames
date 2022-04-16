@@ -5,4 +5,5 @@ add_executable(play
 target_link_libraries(play
     twoplayergames
     tictactoe
+    connectfour
 )
