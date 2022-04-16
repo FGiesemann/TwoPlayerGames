@@ -76,6 +76,17 @@ private:
     play::game::Player m_activePlayer{ play::game::Player::Player1 };
 };
 
+// ---- Interface to game library
+
+std::vector<Move> listLegalMoves(const GameState& game);
+bool isLegalMove(const Move& move, const GameState& game);
+GameState applyMove(const Move& move, const GameState& game);
+bool isGameOver(const GameState& game);
+const play::game::Player& getWinner(const GameState& game);
+Move askForMove(const GameState& state);
+std::ostream& operator<<(std::ostream& ostr, const Move& move);
+std::ostream& operator<<(std::ostream& ostr, const GameState& game);
+
 }
 
 #endif

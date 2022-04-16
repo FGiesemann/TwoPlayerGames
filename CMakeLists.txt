@@ -14,3 +14,4 @@ enable_testing()
 
 add_subdirectory(twoplayergames)
 add_subdirectory(games)
+add_subdirectory(sandbox)

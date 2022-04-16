@@ -138,4 +138,44 @@ std::ostream& operator<<(std::ostream& ostr, const Board& board) {
     return ostr;
 }
 
+// ---- Interface to game library
+
+std::vector<Move> listLegalMoves(const GameState& game) { 
+    return game.availableMoves(); 
+}
+
+bool isLegalMove(const Move& move, const GameState& game) {
+    return game.isLegalMove(move);
+}
+
+GameState applyMove(const Move& move, const GameState& game) {
+    return game.applyMove(move);
+}
+
+bool isGameOver(const GameState& game) {
+    return game.isOver();
+}
+
+const play::game::Player& getWinner(const GameState& game) {
+    return game.winner();
+}
+
+Move askForMove(const GameState& state) {
+    std::cout << "Enter move: <row> <col>: ";
+    int row, col;
+    std::cin >> row >> col;
+    return Move{ { row, col } };
+}
+
+std::ostream& operator<<(std::ostream& ostr, const Move& move) {
+    const auto& point = move.point();
+    ostr << point.row() << ", " << point.col();
+    return ostr;
+}
+
+std::ostream& operator<<(std::ostream& ostr, const GameState& game) {
+    ostr << game.board();
+    return ostr;
+}
+
 }
