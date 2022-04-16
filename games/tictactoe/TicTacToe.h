@@ -82,6 +82,7 @@ std::vector<Move> listLegalMoves(const GameState& game);
 bool isLegalMove(const Move& move, const GameState& game);
 GameState applyMove(const Move& move, const GameState& game);
 bool isGameOver(const GameState& game);
+play::game::Player getActivePlayer(const GameState& game);
 const play::game::Player& getWinner(const GameState& game);
 Move askForMove(const GameState& state);
 std::ostream& operator<<(std::ostream& ostr, const Move& move);

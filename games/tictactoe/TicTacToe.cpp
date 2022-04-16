@@ -156,6 +156,10 @@ bool isGameOver(const GameState& game) {
     return game.isOver();
 }
 
+play::game::Player getActivePlayer(const GameState& game) {
+    return game.activePlayer();
+}
+
 const play::game::Player& getWinner(const GameState& game) {
     return game.winner();
 }

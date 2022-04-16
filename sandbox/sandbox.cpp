@@ -5,6 +5,7 @@
 #include "twoplayergames/agent/Agent.h"
 #include "twoplayergames/agent/InteractivePlayer.h"
 #include "twoplayergames/agent/RandomPlayer.h"
+#include "twoplayergames/agent/MinimaxPlayer.h"
 
 #include "twoplayergames/gameplay/ConsoleGame.h"
 
@@ -17,7 +18,7 @@ int main() {
     using GameState = Game::GameState;
 
     auto player = std::make_unique<play::agent::InteractivePlayer<GameState, Move>>();
-    auto agent = std::make_unique<play::agent::RandomPlayer<GameState, Move>>();
+    auto agent = std::make_unique<play::agent::MinimaxPlayer<GameState, Move>>();
 
     const auto& winner = play::game::playConsoleGame<GameState, Move>(player.get(), agent.get());
     if (winner == play::game::Player::Player1) {
