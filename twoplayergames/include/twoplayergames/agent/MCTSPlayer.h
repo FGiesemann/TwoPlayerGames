@@ -21,140 +21,130 @@ namespace {
 template<class GameState, class Move>
 class MCTSNode {
 public:
-    MCTSNode(const GameState& state, MCTSNode* parent) : parent{ parent },
-        state{ state }, availableMoves{ listLegalMoves(state) }
-    {
-        /* List of legal moves is shuffled here, so that we can pick them in sequential order later.
-         * With the counter evaluatedMoves we count how many moves from the beginning of the (shuffeled) list
-         * have already been evaluated. If evaluatedMoves == availableMoves.size(), all children of the node 
-         * have been visited.
-         */
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(availableMoves.begin(), availableMoves.end(), g);
-        player = std::make_unique<play::agent::RandomPlayer<GameState, Move>>();
-    }
+    MCTSNode(const GameState &state) : MCTSNode(state, nullptr) {}
 
     void evaluateMoves() {
-        MCTSNode* node = selectNode();
-        const auto& winner = node->performRollout();
-        propagateWinner(node, winner);
+        auto node = selectMCTSNode();
+        node = node->expand();
+        auto result = node->simulate();
+        node->backpropagate(result);
     }
 
     std::vector<Move> getBestMoves() const {
-        float winPct = -1;
-        std::vector<Move> bestMoves;
-        for (int i = 0; i < evaluatedMoves; ++i) {
-            const auto& child = children[i];
-            float win = child->computeWinningPct(getActivePlayer(state));
-            if (win > winPct) {
-                winPct = win;
-                bestMoves.clear();
-                bestMoves.push_back(availableMoves[i]);
+        int visits{0};
+        std::vector<Move> moves;
+        for (int i = 0; i < children.size(); ++i) {
+            const auto* c = children[i].get();
+            if (c->numVisits > visits) {
+                visits = c->numVisits;
+                moves.clear();
+                moves.push_back(availableMoves[i]);
+            } else if (c->numVisits == visits) {
+                moves.push_back(availableMoves[i]);
             }
         }
-        return bestMoves;
+        return moves;
     }
+
+    MCTSNode(const GameState &state, MCTSNode *parent) : 
+        parent{parent}, state{state}, availableMoves{ listLegalMoves(state) } {
+        std::shuffle(availableMoves.begin(), availableMoves.end(), g);
+    }
+
 private:
-    MCTSNode* parent{ nullptr };
+    MCTSNode* parent{nullptr};
     GameState state;
     std::vector<Move> availableMoves;
-    int evaluatedMoves{ 0 };
     std::vector<std::unique_ptr<MCTSNode>> children;
-    int player1Wins{ 0 }, player2Wins{ 0 };
-    int numRollouts{ 0 };
-    float temperature{ 1.5f };
+    int evaluatedMoves{0};
+    int numVisits{0};
+    int wins{0}, losses{0};
+    float temperature{1.4f};
 
-    std::unique_ptr<play::agent::RandomPlayer<GameState, Move>> player;
-    random_selector<> selector{};
+    static std::random_device rd;
+    static std::mt19937 g;
 
-    MCTSNode* addChild() {
-        GameState newState = applyMove(availableMoves[evaluatedMoves], state);
-        children.push_back(std::make_unique<MCTSNode>(newState, this));
-        ++evaluatedMoves;
-        return children.back().get();
+    bool isFullyExpanded() const {
+        return evaluatedMoves == availableMoves.size();
     }
 
-    void recordWin(const play::game::Player& player) {
-        if (player == play::game::Player::Player1)
-            ++player1Wins;
-        else if (player == play::game::Player::Player2)
-            ++player2Wins;
-        ++numRollouts;
-    }
-
-    bool canAddChild() {
-        return evaluatedMoves < availableMoves.size();
-    }
-
-    bool isTerminal() {
+    bool isTerminal() const {
         return isGameOver(state);
     }
 
-    MCTSNode* selectNode() {
-        MCTSNode* node = this;
-        while (!node->canAddChild() && !node->isTerminal())
-            node = node->selectChild();
-        if (node->canAddChild())
-            node = node->addChild();
-        return node;
+    MCTSNode* selectMCTSNode() {
+        MCTSNode *n = this;
+        while (n->isFullyExpanded() && !n->isTerminal())
+            n = n->selectChildNode();
+        return n;
     }
 
-    static float computeUCTScore(int totalRollouts, int rollouts, float winPct, float temperature) {
-        return winPct + static_cast<float>(temperature * std::sqrt(std::log(totalRollouts) / rollouts));
+    float computeUCTScore() {
+        auto v = static_cast<float>(numVisits);
+        auto pv = static_cast<float>(parent->numVisits);
+        auto winPct = static_cast<float>(wins - losses) / v;
+        return winPct + temperature * std::sqrt(2 * std::log(pv) / v);
     }
 
-    float computeWinningPct(const play::game::Player& player) const {
-        if (numRollouts == 0)
-            return 0.0f;
-
-        if (player == play::game::Player::Player1)
-            return static_cast<float>(player1Wins) / static_cast<float>(numRollouts);
-        else
-            return static_cast<float>(player2Wins) / static_cast<float>(numRollouts);
+    MCTSNode* selectChildNode() const {
+        auto child = std::max_element(children.begin(), children.end(), [&](const auto& c1, const auto& c2){
+            const auto uct_c1 = c1->computeUCTScore();
+            const auto uct_c2 = c2->computeUCTScore();
+            return uct_c1 < uct_c2;
+        });
+        return child->get();
     }
 
-    MCTSNode* selectChild() {
-        float bestScore = -1;
-        MCTSNode* bestChild = nullptr;
-        int childrenTotalRollouts = std::accumulate(children.begin(), children.end(), 0, [](int a, std::unique_ptr<MCTSNode>& child) {return a + child->numRollouts; });
-        for (auto& child : children) {
-            float winPct = child->computeWinningPct(getActivePlayer(state).other());
-            float score = computeUCTScore(childrenTotalRollouts, child->numRollouts, winPct, temperature);
-            if (score > bestScore) {
-                bestScore = score;
-                bestChild = child.get();
-            }
+    MCTSNode* expand() {
+        if (isTerminal()) {
+            return this;
         }
-        return bestChild;
+
+        const auto move = availableMoves[evaluatedMoves];
+        ++evaluatedMoves;
+        GameState newState = applyMove(move, state);
+        children.push_back(std::make_unique<MCTSNode>(newState, this));
+        return children.back().get();        
     }
 
-    const play::game::Player& performRollout() {
+    play::game::Player simulate() const {
         GameState game = state;
+        play::agent::RandomPlayer<GameState, Move> player;
+        random_selector<> selector{};
         while (!isGameOver(game)) {
-            auto moves = player->selectMoves(game);
-            const auto& m = selector(moves);
-            game = applyMove(m, game);
+            auto moves = player.selectMoves(game);
+            const auto& move = selector(moves);
+            game = applyMove(move, game);
         }
         return getWinner(game);
     }
 
-    void propagateWinner(MCTSNode* node, const play::game::Player& winner) {
-        while (node) {
-            node->recordWin(winner);
-            node = node->parent;
+    void backpropagate(const play::game::Player &player) {
+        if (player == getActivePlayer(state).other()) {
+            ++wins;
+        } else if (player == getActivePlayer(state)) {
+            ++losses;
         }
-    }
 
+        ++numVisits;
+        if (parent)
+            parent->backpropagate(player);
+    }
 };
+
+template<class GameState, class Move>
+std::random_device MCTSNode<GameState, Move>::rd;
+
+template<class GameState, class Move>
+std::mt19937 MCTSNode<GameState, Move>::g{MCTSNode<GameState, Move>::rd()};
 
 }
 
-template<class GameState, class Move, int rollouts=10000>
+template<class GameState, class Move, int rollouts=2000>
 class MCTSPlayer : public Agent<GameState, Move> {
 public:
     std::vector<Move> selectMoves(const GameState& state) override {
-        MCTSNode<GameState, Move> root{ state, nullptr };
+        MCTSNode<GameState, Move> root{ state };
         for (int i = 0; i < rollouts; ++i) {
             root.evaluateMoves();
         }

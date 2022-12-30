@@ -16,13 +16,13 @@
 #include "connectfour/ConnectFour.h"
 
 void mainInteractive() {
-    namespace Game = play::tictactoe;
+    namespace Game = play::connectfour;
 
     using Move = Game::Move;
     using GameState = Game::GameState;
 
     auto player = std::make_unique<play::agent::InteractivePlayer<GameState, Move>>();
-    auto agent = std::make_unique<play::agent::MCTSPlayer<GameState, Move>>();
+    auto agent = std::make_unique<play::agent::MCTSPlayer<GameState, Move, 1000>>();
 
     const auto& winner = play::game::playConsoleGame<GameState, Move>(player.get(), agent.get());
     if (winner == play::game::Player::Player1) {
@@ -39,13 +39,13 @@ void printPlayerPercent(int wins, int rounds) {
 }
 
 void mainInvisibleTournament() {
-    namespace Game = play::tictactoe;
+    namespace Game = play::connectfour;
 
     using Move = Game::Move;
     using GameState = Game::GameState;
 
     auto bot1 = std::make_unique<play::agent::MinimaxPlayer<GameState, Move, play::connectfour::ConnectFourEvaluator_Streaks>>(3);
-    auto bot2 = std::make_unique<play::agent::MCTSPlayer<GameState, Move, 800>>();
+    auto bot2 = std::make_unique<play::agent::MCTSPlayer<GameState, Move, 2000>>();
 
     int player1Win = 0;
     int player2Win = 0;
@@ -85,7 +85,7 @@ void mainInvisibleTournament() {
 }
 
 int main() {
-    /*
+    //*
     mainInteractive();
     /*/
     mainInvisibleTournament();
