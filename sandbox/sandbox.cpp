@@ -16,9 +16,9 @@
 #include "connectfour/ConnectFour.h"
 
 void mainInteractive() {
-    namespace Game = play::connectfour;
+    namespace Game = play::tictactoe;
 
-    using Move = int; //Game::Move;
+    using Move = Game::Move;
     using GameState = Game::GameState;
 
     auto player = std::make_unique<play::agent::InteractivePlayer<GameState, Move>>();
@@ -34,10 +34,14 @@ void mainInteractive() {
     }
 }
 
-void mainInvisibleTournament() {
-    namespace Game = play::connectfour;
+void printPlayerPercent(int wins, int rounds) {
+    std::cout << std::fixed << std::setw(7) << std::setprecision(3) << static_cast<float>(wins) / (rounds + 1) * 100.f << '%';
+}
 
-    using Move = int;
+void mainInvisibleTournament() {
+    namespace Game = play::tictactoe;
+
+    using Move = Game::Move;
     using GameState = Game::GameState;
 
     auto bot1 = std::make_unique<play::agent::MinimaxPlayer<GameState, Move, play::connectfour::ConnectFourEvaluator_Streaks>>(3);
@@ -45,32 +49,43 @@ void mainInvisibleTournament() {
 
     int player1Win = 0;
     int player2Win = 0;
-    constexpr int rounds = 500;
+    constexpr int rounds = 1000;
 
     for (int round = 0; round < rounds; ++round) {
         const auto& winner = play::game::playInvisibleMatch<GameState, Move>(bot1.get(), bot2.get());
         std::cout << "Round " << std::setw(4) << round + 1 << ": ";
         if (winner == play::game::Player::Player1) {
             ++player1Win;
-            std::cout << "Player 1\n";
+            std::cout << "Player 1";
         } else if (winner == play::game::Player::Player2) {
             ++player2Win;
-            std::cout << "Player 2\n";
+            std::cout << "Player 2";
         } else {
-            std::cout << "Draw\n";
+            std::cout << "Draw    ";
         }
+        std::cout << " (";
+        printPlayerPercent(player1Win, round);
+        std::cout << " | ";
+        printPlayerPercent(player2Win, round);
+        std::cout << ")\n";
     }
 
     std::cout << "\nTournament result:\n";
     std::cout << "Rounds played: " << rounds << '\n';
-    std::cout << "  Player 1 wins: " << std::setw(4) << player1Win << " (" << static_cast<float>(player1Win) / rounds * 100.0f << "%)\n";
-    std::cout << "  Player 2 wins: " << std::setw(4) << player2Win << " (" << static_cast<float>(player2Win) / rounds * 100.0f << "%)\n";
+    std::cout << "  Player 1 wins: " << std::setw(4) << player1Win << " (";
+    printPlayerPercent(player1Win, rounds);
+    std::cout << ")\n";
+    std::cout << "  Player 2 wins: " << std::setw(4) << player2Win << " (";
+    printPlayerPercent(player2Win, rounds);
+    std::cout << ")\n";
     int drawCount = rounds - player1Win - player2Win;
-    std::cout << "  Draw         : " << std::setw(4) << drawCount << " (" << static_cast<float>(drawCount) / rounds * 100.0f << "%)\n";
+    std::cout << "  Draw         : " << std::setw(4) << drawCount << " (";
+    printPlayerPercent(drawCount, rounds);
+    std::cout << ")\n";
 }
 
 int main() {
-    //*
+    /*
     mainInteractive();
     /*/
     mainInvisibleTournament();
