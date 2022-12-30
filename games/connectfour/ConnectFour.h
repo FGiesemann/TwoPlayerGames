@@ -64,6 +64,8 @@ private:
     bool m_isWinningState{ false };
 };
 
+using Move = int;
+
 // ---- Interface to game library
 
 std::vector<int> listLegalMoves(const GameState& game);
